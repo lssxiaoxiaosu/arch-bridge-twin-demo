@@ -62,26 +62,38 @@ function initTwin() {
       },
       onReady: (info) => {
         UI.$('loadBar').style.width = '100%';
-        UI.$('loadTxt').textContent = `完成 · ${info.meshes} 个构件 · ${(info.tris / 10000).toFixed(1)} 万面片 · ${info.loadMs} ms`;
+        UI.$('loadTxt').textContent = `完成 · 有效构件 ${info.meshes} 个 · ${(info.tris / 10000).toFixed(1)} 万面片 · ${info.loadMs} ms`;
         UI.$('loadOverlay').classList.add('hide');
         setTimeout(() => UI.$('loadOverlay').classList.add('gone'), 220);
         UI.$('modelInfo').innerHTML = `
-          <div class="row" style="display:flex;justify-content:space-between"><span class="dim">构件数</span><b class="mono">${info.meshes}</b></div>
+          <div class="row" style="display:flex;justify-content:space-between"><span class="dim">有效构件</span><b class="mono">${info.meshes}</b></div>
+          <div class="row" style="display:flex;justify-content:space-between"><span class="dim">退化图元（已隐藏）</span><b class="mono">${info.degenerate}</b></div>
           <div class="row" style="display:flex;justify-content:space-between"><span class="dim">总面片</span><b class="mono">${(info.tris / 10000).toFixed(1)} 万</b></div>
           <div class="row" style="display:flex;justify-content:space-between"><span class="dim">归一化跨径</span><b class="mono">${info.span.toFixed(1)} m</b></div>
           <div class="row" style="display:flex;justify-content:space-between"><span class="dim">模型高度</span><b class="mono">${info.height.toFixed(2)} m</b></div>
           <div class="row" style="display:flex;justify-content:space-between"><span class="dim">桥面标高</span><b class="mono">${info.deckY.toFixed(2)} m</b></div>
           <div class="row" style="display:flex;justify-content:space-between"><span class="dim">拱顶标高</span><b class="mono">${info.crownY.toFixed(2)} m</b></div>
           <div class="row" style="display:flex;justify-content:space-between"><span class="dim">解析耗时</span><b class="mono">${info.loadMs} ms</b></div>
-          <div class="row" style="display:flex;justify-content:space-between"><span class="dim">测点挂接</span><b class="mono">${D.VISUAL_SENSORS.length} 个</b></div>`;
+          <div class="row" style="display:flex;justify-content:space-between"><span class="dim">测点挂接</span><b class="mono">${D.VISUAL_SENSORS.length} 个</b></div>
+          <div class="dim small" style="margin-top:4px">${info.dbg || ''}</div>`;
         const toggleLayer = (k) => {
           twin.setLayer(k, !twin.state.layers[k]);
           UI.renderLayerList(info.cats, twin.state.layers, toggleLayer);
         };
         UI.renderLayerList(info.cats, twin.state.layers, toggleLayer);
-        UI.toast(`三维场景就绪：${info.meshes} 个构件、${(info.tris / 10000).toFixed(1)} 万面片，测点已挂接 ${D.VISUAL_SENSORS.length} 个。`);
+        UI.toast(`三维场景就绪：有效构件 ${info.meshes} 个（另隐藏 ${info.degenerate} 个 CAD 退化图元）、${(info.tris / 10000).toFixed(1)} 万面片，测点已挂接 ${D.VISUAL_SENSORS.length} 个。`);
       },
       onError: (msg) => UI.fatal('三维模型加载失败：' + msg),
+      onContextLost: () => {
+        UI.toast('⚠ 显卡渲染上下文丢失（模型过大或显存不足）。已自动切换到「流畅」精度，正在恢复…', 'bad');
+        twin?.setPrecision('smooth');
+        document.querySelectorAll('#precMode .seg-btn').forEach((x) => x.classList.toggle('active', x.dataset.prec === 'smooth'));
+      },
+      onContextRestored: () => UI.toast('渲染上下文已恢复。如仍卡顿，请保持「流畅」精度。'),
+      onDowngrade: (prec, st) => {
+        document.querySelectorAll('#precMode .seg-btn').forEach((x) => x.classList.toggle('active', x.dataset.prec === prec));
+        UI.toast(`检测到帧率偏低（${st.fps} fps），已自动降级为「${prec === 'smooth' ? '流畅' : '标准'}」精度：${(st.tris / 10000).toFixed(0)} 万面片 / ${st.draws} 个构件。可手动切回更高精度。`, 'warn');
+      },
       onStats: (s) => UI.renderStatusBar(s, engine.latency().reduce((a, r) => a + r[1], 0)),
       onHover: (o) => {
         const tip = UI.$('tip3d');
@@ -299,7 +311,11 @@ function bind() {
     const b = e.target.closest('.seg-btn'); if (!b) return;
     document.querySelectorAll('#precMode .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
     const r = twin?.setPrecision(b.dataset.prec);
-    const map = { high: '精细：显示全部构件（用于局部查看与截图）', standard: '标准：裁剪细小构件，兼顾观感与帧率（推荐）', smooth: '流畅：仅保留主要构件，用于投影与低配设备' };
+    const map = {
+      high: '精细：显示全部构件（含微小零件），仅建议在独显机器上用于局部查看与出图',
+      standard: '标准：隐藏小于跨度 0.2% 的微小零件（本模型约相当于 1 m 以下的螺栓级细节），兼顾观感与帧率',
+      smooth: '流畅：隐藏小于跨度 0.5% 的零件，用于投影、集显或低配设备',
+    };
     UI.toast(`${map[b.dataset.prec]}　当前渲染 ${((r?.tris || 0) / 10000).toFixed(0)} 万面片、${r?.draws ?? 0} 个构件。`);
   };
   UI.$('clipSlider').oninput = (e) => {
