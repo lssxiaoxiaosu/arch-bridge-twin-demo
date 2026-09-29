@@ -128,7 +128,8 @@ export function renderStatusBar(stats, latency) {
   $('sbLatency').textContent = ((latency * 1000).toFixed(0)) + ' ms';
   $('sbPoints').textContent = SENSORS.filter((s) => s.visual).length + ' / ' + SENSORS.length;
   $('renderTag').textContent = `${stats.fps ?? '--'} fps · ${((stats.tris || 0) / 10000).toFixed(1)} 万面片 · ${stats.draws ?? '--'} 构件`;
-  $('precInfo').textContent = `当前渲染 ${((stats.tris || 0) / 10000).toFixed(0)} 万面片 / ${stats.draws ?? 0} 个构件`;
+  $('precInfo').textContent = `当前渲染 ${((stats.tris || 0) / 10000).toFixed(0)} 万面片 / ${stats.draws ?? 0} 个构件`
+    + (stats.degenerate ? `（另隐藏 ${stats.degenerate} 个退化图元）` : '');
 }
 
 export function renderDashKpis(engine) {
