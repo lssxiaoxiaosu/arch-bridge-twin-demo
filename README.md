@@ -1,6 +1,12 @@
-﻿# 拱桥智能建造及智能监测综合实验平台 · 数字孪生监测与展示系统 Demo
+# 拱桥智能建造及智能监测综合实验平台 · 数字孪生监测与展示系统 Demo
 
 对应《详细设计和建设方案》**第 6 章 智能化监测分析与展示平台**的可交互演示原型。
+
+> **在线访问（已发布到 GitHub Pages，任何人可打开）**
+> <https://lssxiaoxiaosu.github.io/arch-bridge-twin-demo/>
+> 仓库：<https://github.com/lssxiaoxiaosu/arch-bridge-twin-demo>（public）
+> 首次打开需下载约 15 MB 的 BIM 模型并解析约 5073 万面片，请等加载层走完。
+> 同一仓库名重复发布会更新内容、**链接不变**。注意：该仓库为公开仓库，模型与截图均公开可见。
 
 - 三维引擎：Three.js r160（本地 `libs/`，离线可用）
 - 图表：Apache ECharts（本地 `libs/echarts.min.js`）
