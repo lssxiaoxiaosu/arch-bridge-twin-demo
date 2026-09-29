@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拱桥智能建造及智能监测综合实验平台 · 数字孪生监测平台 Demo</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="libs/echarts.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./libs/three.module.js",
+    "three/addons/": "./libs/addons/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow g1"></div>
+<div class="bg-glow g2"></div>
+<div class="bg-glow g3"></div>
+
+<!-- ======================= 顶栏 ======================= -->
+<header id="topbar">
+  <div class="brand">
+    <div class="logo-mark"><span></span><span></span><span></span></div>
+    <div class="brand-txt">
+      <h1>拱桥智能建造及智能监测综合实验平台</h1>
+      <p>数字孪生监测与展示系统 <b>Demo v1.0</b> · 合同编号 JZAD2026-J1-080-JZZB</p>
+    </div>
+  </div>
+
+  <div class="top-kpis" id="topKpis"></div>
+
+  <div class="top-right">
+    <button class="btn btn-fire" id="btnLoadEvent" title="注入一次加载工况：观察应变、位移、索力响应与预警联动">
+      <i class="dot"></i>模拟加载工况
+    </button>
+    <span class="chip chip-demo" title="本演示全部数据由前端仿真引擎生成，非真实采集数据">演示数据</span>
+    <span class="chip chip-ok" id="connChip"><i class="pulse"></i>采集在线 8/8</span>
+    <span class="chip mono" id="clock">--:--:--</span>
+  </div>
+</header>
+
+<!-- ======================= 左侧导航 ======================= -->
+<nav id="rail">
+  <button class="rail-btn active" data-view="twin"   data-tip="三维数字孪生"><i>◈</i><span>孪生</span></button>
+  <button class="rail-btn" data-view="dash"   data-tip="监测总览看板"><i>◫</i><span>总览</span></button>
+  <button class="rail-btn" data-view="history" data-tip="数据分析与回放"><i>∿</i><span>分析</span></button>
+  <button class="rail-btn" data-view="alarm"  data-tip="预警管理"><i>⚠</i><span>预警</span><em id="alarmBadge" hidden>0</em></button>
+  <button class="rail-btn" data-view="hoist"  data-tip="吊装工况推演"><i>⌁</i><span>吊装</span></button>
+  <button class="rail-btn" data-view="devices" data-tip="设备与测点台账"><i>☰</i><span>台账</span></button>
+  <button class="rail-btn" data-view="system" data-tip="系统设置与权限"><i>⚙</i><span>系统</span></button>
+</nav>
+
+<!-- ======================= 主体 ======================= -->
+<main id="views">
+
+  <!-- ① 三维数字孪生 -->
+  <section class="view active" id="view-twin">
+    <div class="twin-grid">
+
+      <aside class="panel col-left">
+        <div class="panel-h"><span class="bar"></span>场景与图层<i class="tag">需求 4-2/4-4</i></div>
+
+        <div class="group">
+          <div class="group-t">构件图层</div>
+          <div id="layerList" class="layer-list"><div class="dim">模型加载后自动分类…</div></div>
+        </div>
+
+        <div class="group">
+          <div class="group-t">测点图层</div>
+          <div id="sensorToggles" class="layer-list"></div>
+        </div>
+
+        <div class="group">
+          <div class="group-t">显示模式</div>
+          <div class="seg" id="colorMode">
+            <button class="seg-btn active" data-mode="normal">真实材质</button>
+            <button class="seg-btn" data-mode="status">状态着色</button>
+          </div>
+          <div class="switch-row"><label class="sw"><input type="checkbox" id="swWire"><span></span>线框</label>
+            <label class="sw"><input type="checkbox" id="swRotate"><span></span>自动旋转</label>
+            <label class="sw"><input type="checkbox" id="swGrid" checked><span></span>网格基准</label>
+          </div>
+          <div class="group-t" style="margin-top:7px">显示精度（面片裁剪）</div>
+          <div class="seg" id="precMode">
+            <button class="seg-btn" data-prec="high">精细</button>
+            <button class="seg-btn active" data-prec="standard">标准</button>
+            <button class="seg-btn" data-prec="smooth">流畅</button>
+          </div>
+          <div class="dim small" id="precInfo">—</div>
+        </div>
+
+        <div class="group">
+          <div class="group-t">剖切与测量</div>
+          <div class="slider-row"><span>剖切面</span>
+            <input type="range" id="clipSlider" min="0" max="100" value="100">
+            <b class="mono" id="clipVal">关</b>
+          </div>
+          <div class="btn-row">
+            <button class="btn sm" id="btnMeasure">测量距离</button>
+            <button class="btn sm" id="btnMeasureClear">清除</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-t">预设视角</div>
+          <div class="btn-grid">
+            <button class="btn sm" data-cam="all">全桥</button>
+            <button class="btn sm" data-cam="side">正立面</button>
+            <button class="btn sm" data-cam="top">俯视</button>
+            <button class="btn sm" data-cam="crown">拱顶</button>
+            <button class="btn sm" data-cam="deck">桥面</button>
+            <button class="btn sm" data-cam="foot">拱脚</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-t">模型信息</div>
+          <div id="modelInfo" class="kv"><div class="dim">加载中…</div></div>
+        </div>
+      </aside>
+
+      <div class="stage">
+        <div id="twinCanvas"></div>
+
+        <div class="stage-overlay tl">
+          <div class="mini-legend" id="statusLegend"></div>
+        </div>
+
+        <div class="stage-overlay tr">
+          <div class="stage-chip" id="stageTag">试验模型 1:100 · 跨径 6.0 m 归一化显示</div>
+          <div class="stage-chip mono" id="renderTag">-- fps · -- 万面片</div>
+        </div>
+
+        <div class="stage-overlay bl" id="tip3d" hidden></div>
+
+        <div class="stage-overlay bc">
+          <div class="measure-hint" id="measureHint" hidden>测量模式：在模型上依次点击两点</div>
+        </div>
+
+        <div id="loadOverlay">
+          <div class="load-box">
+            <div class="load-ring"><div></div></div>
+            <div class="load-title">正在解析 BIM 模型（GLB · Draco 压缩）</div>
+            <div class="bar"><div class="bar-in" id="loadBar"></div></div>
+            <div class="load-txt mono" id="loadTxt">准备…</div>
+            <div class="load-sub">模型：平南三桥（中承式钢管混凝土拱桥）· 构件实例 5173 个 · 约 5073 万面片</div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel col-right">
+        <div class="panel-h"><span class="bar"></span>构件信息<i class="tag">需求 4-4</i></div>
+        <div id="selInfo" class="sel-info"><div class="dim">点击模型中的构件或测点查看属性</div></div>
+
+        <div class="panel-h"><span class="bar"></span>实时测点<i class="tag">需求 4-6</i></div>
+        <div id="liveList" class="live-list"></div>
+
+        <div class="panel-h"><span class="bar"></span>端到端延迟<i class="tag">需求 4-6</i></div>
+        <div id="latencyBox" class="latency"></div>
+      </aside>
+
+    </div>
+  </section>
+
+  <!-- ② 监测总览 -->
+  <section class="view" id="view-dash">
+    <div class="kpi-row" id="kpiRow"></div>
+    <div class="dash-grid">
+      <div class="card span2">
+        <div class="card-h"><span class="bar"></span>拱肋应变实时曲线（με）<i class="tag">需求 4-11 / 4-13</i>
+          <span class="tools"><button class="btn xs" id="btnStrainAdd">+ 测点</button></span></div>
+        <div class="chart" id="chStrain"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="bar"></span>分级预警<i class="tag">需求 4-20</i></div>
+        <div class="alarm-mini" id="dashAlarms"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="bar"></span>吊杆 / 扣索索力（kN）<i class="tag">需求 4-12</i></div>
+        <div class="chart" id="chCable"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="bar"></span>桥面竖向位移：理论 vs 实测（mm）<i class="tag">需求 4-14</i></div>
+        <div class="chart" id="chDisp"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="bar"></span>环境量：温度 / 湿度 / 风速<i class="tag">需求 4-12</i></div>
+        <div class="chart" id="chEnv"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="bar"></span>误差统计（理论—实测）<i class="tag">需求 4-14</i></div>
+        <div class="err-grid" id="errGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ③ 数据分析 -->
+  <section class="view" id="view-history">
+    <div class="twin-grid narrow-left">
+      <aside class="panel col-left">
+        <div class="panel-h"><span class="bar"></span>查询条件<i class="tag">需求 4-15</i></div>
+        <label class="fld">测点类型<select id="hsType"></select></label>
+        <label class="fld">测点<select id="hsSensor"></select></label>
+        <label class="fld">时间范围<select id="hsRange">
+          <option value="1">近 1 小时</option>
+          <option value="24" selected>近 24 小时</option>
+          <option value="168">近 7 天</option>
+        </select></label>
+        <div class="btn-row">
+          <button class="btn pri" id="btnHsQuery">查询</button>
+          <button class="btn" id="btnHsCsv">导出 CSV</button>
+        </div>
+        <div class="panel-h"><span class="bar"></span>历史回放<i class="tag">需求 4-15</i></div>
+        <div class="slider-row"><span>时间轴</span><input type="range" id="pbSlider" min="0" max="1440" value="1440"><b class="mono" id="pbVal">最新</b></div>
+        <div class="btn-row">
+          <button class="btn sm pri" id="btnPbPlay">▶ 回放</button>
+          <button class="btn sm" id="btnPbSnap">在孪生中定位</button>
+        </div>
+        <div class="dim small">回放时三维场景按时间轴同步着色，用于课后复盘与实验演示。</div>
+        <div class="panel-h"><span class="bar"></span>数据预处理<i class="tag">需求 4-18</i></div>
+        <div class="switch-row wrap">
+          <label class="sw"><input type="checkbox" id="ppAvg"><span></span>滑动平均</label>
+          <label class="sw"><input type="checkbox" id="ppLpf"><span></span>低通滤波</label>
+          <label class="sw"><input type="checkbox" id="ppOutlier" checked><span></span>异常剔除</label>
+          <label class="sw"><input type="checkbox" id="ppFill" checked><span></span>缺失插补</label>
+        </div>
+      </aside>
+      <div class="stage panel-host">
+        <div class="card fill">
+          <div class="card-h"><span class="bar"></span><span id="hsTitle">测点曲线</span><i class="tag" id="hsStat"></i></div>
+          <div class="chart fill" id="chHistory"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ④ 预警管理 -->
+  <section class="view" id="view-alarm">
+    <div class="kpi-row" id="alarmStats"></div>
+    <div class="card table-card">
+      <div class="card-h"><span class="bar"></span>预警记录<i class="tag">需求 4-20 · 三级阈值 + 模型定位</i>
+        <span class="tools">
+          <select id="almLevel"><option value="">全部级别</option><option value="1">预警</option><option value="2">报警</option><option value="3">紧急</option></select>
+          <select id="almStatus"><option value="">全部状态</option><option value="未确认">未确认</option><option value="已确认">已确认</option><option value="已恢复">已恢复</option></select>
+        </span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl" id="alarmTable">
+          <thead><tr><th>时间</th><th>测点编码</th><th>位置</th><th>指标</th><th>当前值</th><th>阈值</th><th>级别</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="empty" id="alarmEmpty">暂无预警记录，系统运行正常。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑤ 吊装推演 -->
+  <section class="view" id="view-hoist">
+    <div class="twin-grid narrow-left">
+      <aside class="panel col-left">
+        <div class="panel-h"><span class="bar"></span>斜拉扣挂吊装工序<i class="tag">方案 4.6</i></div>
+        <ol class="steps" id="hoistSteps"></ol>
+      </aside>
+      <div class="stage">
+        <div id="hoistCanvas"></div>
+        <div class="stage-overlay tl">
+          <div class="hoist-head">
+            <div class="hoist-title">拱肋节段斜拉扣挂悬臂拼装推演</div>
+            <div class="hoist-prog mono" id="hoistProg">节段 0 / 45</div>
+          </div>
+        </div>
+        <div class="stage-overlay tr">
+          <div class="hoist-readout" id="hoistReadout"></div>
+        </div>
+        <div class="stage-overlay bc">
+          <div class="hoist-ctrl">
+            <button class="btn pri" id="hoistPlay">▶ 播放</button>
+            <button class="btn" id="hoistNext">⏭ 下一节段</button>
+            <button class="btn" id="hoistReset">↺ 复位</button>
+            <label class="fld inline">速度
+              <select id="hoistSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+            </label>
+            <span class="note">两岸对称、先拱脚后拱顶；拱顶设可拆卸合龙段（方案 3.3.2）</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑥ 设备台账 -->
+  <section class="view" id="view-devices">
+    <div class="kpi-row" id="devStats"></div>
+    <div class="dev-grid">
+      <div class="card table-card">
+        <div class="card-h"><span class="bar"></span>数据采集装置（8 套）<i class="tag">需求 3-8</i></div>
+        <div class="tbl-wrap"><table class="tbl" id="devTable">
+          <thead><tr><th>编号</th><th>安装位置</th><th>AI</th><th>DI</th><th>DO</th><th>串口</th><th>接入测点</th><th>状态</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+      <div class="card table-card">
+        <div class="card-h"><span class="bar"></span>应变测点分区统计<i class="tag">方案 表5-2</i></div>
+        <div class="tbl-wrap"><table class="tbl" id="zoneTable">
+          <thead><tr><th>分区</th><th>部位</th><th>设计测点</th><th>模型可视化</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+      <div class="card table-card">
+        <div class="card-h"><span class="bar"></span>传感器类型统计<i class="tag">方案 表5-1 / 5-3</i></div>
+        <div class="tbl-wrap"><table class="tbl" id="sensTable">
+          <thead><tr><th>类型</th><th>指标</th><th>设计数量</th><th>演示挂接</th><th>在线率</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+      <div class="card table-card">
+        <div class="card-h"><span class="bar"></span>构件编码规则（四码合一）<i class="tag">方案 附录D</i></div>
+        <div class="tbl-wrap"><table class="tbl" id="codeTable">
+          <thead><tr><th>类型码</th><th>含义</th><th>示例</th><th>对应实体</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ⑦ 系统设置 -->
+  <section class="view" id="view-system">
+    <div class="sys-grid">
+      <div class="card">
+        <div class="card-h"><span class="bar"></span>角色—用户—资源 三级授权（RBAC）<i class="tag">需求 4-25</i></div>
+        <div class="tbl-wrap"><table class="tbl" id="roleTable">
+          <thead><tr><th>角色</th><th>数据范围</th><th>菜单权限</th><th>操作权限</th><th>用户数</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="bar"></span>组织机构树<i class="tag">需求 4-24</i></div>
+        <div class="tree" id="orgTree"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="bar"></span>用户管理<i class="tag">需求 4-26</i></div>
+        <div class="tbl-wrap"><table class="tbl" id="userTable">
+          <thead><tr><th>账号</th><th>姓名</th><th>角色</th><th>组织</th><th>状态</th><th>密码有效期</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="bar"></span>日志审计（保留 ≥6 个月）<i class="tag">需求 4-27</i></div>
+        <div class="tbl-wrap"><table class="tbl" id="logTable">
+          <thead><tr><th>时间</th><th>类型</th><th>用户</th><th>对象</th><th>结果</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ======================= 状态栏 ======================= -->
+<footer id="statusbar">
+  <span class="sb-item"><i class="led ok"></i>数据链路：MQTT / 边缘计算正常</span>
+  <span class="sb-item">测点 <b class="mono" id="sbPoints">132</b> 个</span>
+  <span class="sb-item">采样 <b class="mono">1 Hz</b></span>
+  <span class="sb-item">端到端延迟 <b class="mono" id="sbLatency">--</b></span>
+  <span class="sb-item">场景 <b class="mono" id="sbFps">--</b> fps / <b class="mono" id="sbTris">--</b> 面片 / <b class="mono" id="sbDraw">--</b> 构件</span>
+  <span class="sb-item right">对应《详细设计和建设方案》第 6 章 · 演示数据由前端仿真引擎生成</span>
+</footer>
+
+<div id="toast"></div>
+<div id="fatal" hidden></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
